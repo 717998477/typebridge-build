@@ -16,19 +16,21 @@ TypeBridge（手机当电脑/电视遥控）一键构建包仓库（**私人仓�
 | `Build Win exe` | 手动 `Run workflow`，或推送 `v*` tag | `TypeBridge.exe` |
 | `Build TV APK` | 手动 `Run workflow`，或推送 `v*` tag | `TypeBridgeTV.apk` |
 
-### 方式一：手动构建（只出构建产物）
+### 方式一：手动构建（产物同时自动发布到 Releases）
 
 仓库页 → **Actions** → 选 `Build Win exe` 或 `Build TV APK` → **Run workflow**。
-构建完成后在本次运行页底部 **Artifacts** 里下载 `TypeBridge.exe` / `TypeBridgeTV.apk`。
+构建完成后：
+- 本次运行页底部 **Artifacts** 可下载 `TypeBridge.exe` / `TypeBridgeTV.apk`；
+- 同时自动发布到 **Releases** 的 `win-latest` / `tv-latest`（每次覆盖更新为最新构建，不刷屏）。
 
-### 方式二：打 tag 自动构建并发布到 Releases（推荐发布时用）
+### 方式二：打 tag 自动构建并发布到 Releases（正式发布时用）
 
 ```bash
 git tag win-v0.4.10 && git push origin win-v0.4.10     # 构建电脑版并发布
 git tag tv-v0.6.53 && git push origin tv-v0.6.53       # 构建手机版并发布
 ```
 
-推送 tag 后自动构建，并把产物上传到 **Releases**（页首 Releases 标签里下载）。
+推送 tag 后自动构建，并把产物上传到 **Releases** 对应 tag（页首 Releases 标签里下载）。
 
 ## 本地构建（可选）
 
