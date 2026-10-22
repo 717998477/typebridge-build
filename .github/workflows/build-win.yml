@@ -8,6 +8,8 @@ on:
 jobs:
   build:
     runs-on: ubuntu-24.04
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v7
 
@@ -36,4 +38,3 @@ jobs:
           tag_name: ${{ github.event_name == 'push' && github.ref_name || 'win-latest' }}
           name: ${{ github.event_name == 'push' && github.ref_name || 'TypeBridge Win 最新构建' }}
           files: win/build/TypeBridge.exe
-          generate_release_notes: true
