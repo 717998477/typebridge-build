@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>TypeBridge</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{font-family:system-ui,-apple-system,sans-serif;display:flex;flex-direction:column;height:100dvh;background:#f5f6f8;color:#1a1a1a}
+#top{display:flex;align-items:center;gap:8px;padding:12px 16px;background:#fff;border-bottom:1px solid #e5e5e5}
+#dot{width:10px;height:10px;border-radius:50%;background:#ccc;flex-shrink:0}
+#dot.on{background:#22ab5f}
+#dot.off{background:#d9483b}
+#status{font-size:14px;color:#555}
+#fg{font-size:12px;color:#888;padding:6px 16px;background:#fafafa;border-bottom:1px solid #eee;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#box{flex:1;margin:12px 16px;padding:14px;font-size:17px;line-height:1.5;border:1px solid #d0d0d0;border-radius:10px;resize:none;background:#fff}
+#box:focus{outline:none;border-color:#378add}
+#sendrow{display:flex;gap:10px;margin:0 16px 10px}
+#mode{flex:0 0 42%;padding:16px 34px 16px 12px;font-size:15px;color:#333;background-color:#fff;border:1px solid #d0d0d0;border-radius:10px;cursor:pointer;
+  -webkit-appearance:none;appearance:none;
+  background-image:url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' fill='none' stroke='%23888' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:right 12px center}
+#send{flex:1;padding:16px;font-size:18px;font-weight:500;color:#fff;background:#185fa5;border:none;border-radius:10px;cursor:pointer}
+#send:active{background:#0c447c}
+#send.sent{background:#22ab5f}
+#send.live{background:#22ab5f}
+#autoclear{flex:0 0 auto;padding:16px 10px;font-size:13px;color:#333;background:#fff;border:1px solid #d0d0d0;border-radius:10px;cursor:pointer;white-space:nowrap}
+#autoclear:active{background:#eee}
+#autoclear.on{background:#22ab5f;color:#fff;border-color:#22ab5f}
+#row{display:flex;gap:10px;margin:0 16px calc(12px + env(safe-area-inset-bottom))}
+#row button{flex:1;padding:14px 0;font-size:15px;color:#333;background:#fff;border:1px solid #d0d0d0;border-radius:10px;cursor:pointer}
+#row button:active{background:#eee}
+#mousebtn.on{background:#185fa5;color:#fff;border-color:#185fa5}
+#mousepad{display:none;flex:1;flex-direction:column;padding:0 16px 10px;min-height:0}
+#mpad{flex:1;min-height:200px;border:2px dashed #b8c6d4;border-radius:12px;background:#eef3f8;position:relative;touch-action:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;-webkit-tap-highlight-color:transparent}
+#mpad .ph{position:absolute;left:0;right:0;top:45%;text-align:center;color:#7d93ab;font-size:13px;line-height:1.7;pointer-events:none;padding:0 16px}
+#mbtnrow{display:flex;gap:8px;padding:0 16px 10px}
+#mbtnrow button{flex:1;padding:16px 0;font-size:15px;color:#333;background:#fff;border:1px solid #d0d0d0;border-radius:10px;cursor:pointer}
+#mbtnrow button:active{background:#eee}
+#mbtnrow button.lock{background:#ff9800;color:#fff;border-color:#ff9800}
+#mwheel.on{background:#22ab5f;color:#fff;border-color:#22ab5f}
+#mzoom.on{background:#22ab5f;color:#fff;border-color:#22ab5f}
+#coderow{display:flex;gap:10px;margin:0 16px 10px}
+#codeinput{flex:1;min-width:0;padding:12px;font-size:15px;border:1px solid #d0d0d0;border-radius:10px;background:#fff;color:#1a1a1a}
+#codego{padding:12px 18px;font-size:15px;font-weight:500;color:#fff;background:#185fa5;border:none;border-radius:10px;cursor:pointer}
+#codego:active{background:#0c447c}
+#hint{font-size:12px;color:#999;text-align:center;padding:0 16px 8px;line-height:1.5}
+@media (prefers-color-scheme:dark){
+body{background:#111;color:#eee}
+#top{background:#1c1c1e;border-color:#333}
+#fg{background:#161616;border-color:#2a2a2a;color:#aaa}
+#box{background:#1c1c1e;border-color:#444;color:#eee}
+#mode{background-color:#2c2c2e;border-color:#444;color:#ddd}
+#row button{background:#2c2c2e;border-color:#444;color:#ddd}
+#codeinput{background:#2c2c2e;border-color:#444;color:#eee}
+#autoclear{background:#2c2c2e;border-color:#444;color:#ddd}
+#autoclear.on{background:#22ab5f;color:#fff;border-color:#22ab5f}
+}
+</style>
+</head>
+<body>
+<div id="top"><span id="dot" class="off"></span><span id="status">连接中…</span></div>
+<div id="fg">目标：-</div>
+<div id="coderow" style="display:none">
+<input id="codeinput" placeholder="输入电脑上的连接码（字母/数字，最多 30 位）" inputmode="text" autocomplete="off">
+<button id="codego">连 接</button>
+</div>
+<textarea id="box" placeholder="点一下这里，再用输入法的麦克风说话或打字" enterkeyhint="send" autocomplete="off"></textarea>
+<div id="sendrow">
+<select id="mode" title="同步方式">
+<option value="manual">手动发送</option>
+<option value="live">实时同步</option>
+</select>
+<button id="autoclear" class="on" title="实时同步时，停顿 1.5 秒自动清空输入框">自动清空</button>
+<button id="send">发 送</button>
+</div>
+<div id="row">
+<button id="enter">回车</button>
+<button id="undo">撤回</button>
+<button id="bs">退格</button>
+<button id="mousebtn">鼠标:关</button>
+</div>
+<div id="mousepad">
+<div id="mpad"><div class="ph">单指滑动=移动光标<br>左键/右键：轻点=单击 · 长按=锁定按住（再按解除）<br>滚轮键=滚轮模式（滑动=滚轮）<br>缩放键=缩放模式（上滑=放大 · 下滑=缩小）</div></div>
+<div id="mbtnrow">
+<button id="mleft">左键</button>
+<button id="mwheel">滚轮</button>
+<button id="mzoom">缩放</button>
+<button id="mright">右键</button>
+</div>
+</div>
+<div id="hint">发送后文字出现在电脑光标处 · 撤回=删掉上一次发送的内容</div>
+<script>
+(function(){
+var code = '';
+var m = location.search.match(/[?&]code=([^&]*)/);
+if (m) code = decodeURIComponent(m[1]);
+var dot=document.getElementById('dot'),status=document.getElementById('status'),
+    fg=document.getElementById('fg'),box=document.getElementById('box'),
+    send=document.getElementById('send'),modeSel=document.getElementById('mode'),
+    hint=document.getElementById('hint'),
+    autoclearBtn=document.getElementById('autoclear'),
+    coderow=document.getElementById('coderow'),codeinput=document.getElementById('codeinput'),
+    codego=document.getElementById('codego'),
+    mousebtn=document.getElementById('mousebtn'),mpad=document.getElementById('mpad');
+var ws=null,authed=false,lastLen=0,timer=null;
+var mode='manual',lastSent='',syncTimer=null,composing=false;
+
+function setSt(on,txt){
+  dot.classList.toggle('on',on);dot.classList.toggle('off',!on);
+  status.textContent=txt;
+}
+
+function connect(){
+  authed=false;
+  setSt(false,'连接中…');
+  try{ ws=new WebSocket('ws://'+location.host+'/ws'); }
+  catch(e){ setSt(false,'连接失败'); return; }
+  ws.onopen=function(){
+    ws.send(JSON.stringify({type:'hello',code:code}));
+  };
+  ws.onmessage=function(e){
+    var m; try{m=JSON.parse(e.data);}catch(p){return;}
+    if(m.type==='ready'){
+      authed=true;setSt(true,'已连接');
+      if(mode==='live'){ lastSent=box.value; }
+    }
+    else if(m.type==='ack'){ if(m.fg)fg.textContent='目标：'+m.fg; }
+    else if(m.type==='error'){setSt(false,m.msg||'错误');}
+  };
+  ws.onclose=function(){authed=false;setSt(false,'已断开，3秒后重连…');timer=setTimeout(connect,3000);};
+  ws.onerror=function(){try{ws.close();}catch(e){}};
+}
+
+function doSend(obj){ if(ws&&ws.readyState===1){ws.send(JSON.stringify(obj));return true;} return false; }
+
+// ===== 鼠标触摸板模式（v0.4.8）：手机=笔记本触摸板 =====
+var mouseOn=false, padWheelMode=false, padZoomMode=false;
+function setMouse(on){
+  mouseOn=on;
+  mousebtn.textContent=on?'鼠标:开':'鼠标:关';
+  mousebtn.classList.toggle('on',on);
+  document.getElementById('fg').style.display=on?'none':'';
+  document.getElementById('box').style.display=on?'none':'';
+  document.getElementById('sendrow').style.display=on?'none':'';
+  document.getElementById('row').style.display=on?'none':'';
+  document.getElementById('hint').style.display=on?'none':'';
+  document.getElementById('mousepad').style.display=on?'flex':'none';
+  if(on){
+    mStart=null; mMoved=false; mAcc=0; wheelAcc=0; lastWheelSent=0;
+    if(padWheelMode){ padWheelMode=false; mwheel.classList.remove('on'); mwheel.textContent='滚轮'; }
+    if(padZoomMode){ padZoomMode=false; mzoom.classList.remove('on'); mzoom.textContent='缩放'; }
+    mleft.classList.remove('lock'); mleft.textContent='左键';
+    mright.classList.remove('lock'); mright.textContent='右键';
+  }
+}
+mousebtn.addEventListener('click',function(){ setMouse(!mouseOn); });
+
+// 触控板：没按按键=只移动光标；滚轮模式下=上下滑动滚轮。
+// 双指手势全部禁用（手机浏览器双指会触发浏览器自身手势，导致卡顿/闪退）。
+var mStart=null, mAcc=0, mMoved=false, wheelAcc=0, lastWheelSent=0;
+mpad.addEventListener('touchstart',function(e){
+  e.preventDefault();
+  var t=e.touches;
+  if(t.length>=2){ mStart=null; return; } // 双指忽略
+  mStart={x:t[0].clientX,y:t[0].clientY}; mAcc=0; mMoved=false; wheelAcc=0; lastWheelSent=0;
+});
+mpad.addEventListener('touchmove',function(e){
+  e.preventDefault();
+  var t=e.touches;
+  if(!mStart||t.length>=2) return;
+  var dx=t[0].clientX-mStart.x, dy=t[0].clientY-mStart.y;
+  mStart={x:t[0].clientX,y:t[0].clientY};
+  mAcc+=Math.abs(dx)+Math.abs(dy);
+  if(mAcc>4) mMoved=true;
+  if(padWheelMode||padZoomMode){
+    // 滚轮/缩放模式：每 80ms 最多发一格、一次最多一格——避免消息风暴把手机浏览器搞卡闪退
+    // 缩放每格 ≈ 5%（电脑端注入 1/4 格增量），轻微滑动不会一下拉满
+    wheelAcc+=dy;
+    var now=Date.now();
+    if(Math.abs(wheelAcc)>=40 && now-lastWheelSent>=80){
+      doSend({type:padWheelMode?'wheel':'zoom',steps:wheelAcc<0?1:-1});
+      wheelAcc-=wheelAcc<0?40:-40;
+      lastWheelSent=now;
+    }
+  }else{
+    doSend({type:'mmove',dx:dx,dy:dy}); // 移动光标（左/右键锁定时=按住拖动）
+  }
+});
+mpad.addEventListener('touchend',function(e){ mStart=null; mMoved=false; mAcc=0; wheelAcc=0; lastWheelSent=0; });
+mpad.addEventListener('touchcancel',function(e){ mStart=null; mMoved=false; mAcc=0; wheelAcc=0; lastWheelSent=0; });
+
+// ===== 底部三键：左键 / 滚轮 / 右键 =====
+// 左/右键：轻点=单击一次；长按=锁定按住（可拖动），再按一下=解除锁定
+// 滚轮键：按一下=进入滚轮模式（触摸板滑动=滚轮），再按=退出
+var mleft=document.getElementById('mleft'),mright=document.getElementById('mright'),
+    mwheel=document.getElementById('mwheel'),mzoom=document.getElementById('mzoom');
+function bindKey(el, label, click, lock, unlock){
+  var t=null, locked=false, justUnlocked=false;
+  function setLock(v){
+    locked=v;
+    el.classList.toggle('lock',v);
+    el.textContent=v?(label+'·按住'):label;
+    if(v) lock(); else unlock();
+  }
+  el.addEventListener('touchstart',function(e){
+    e.preventDefault();
+    if(locked){ setLock(false); justUnlocked=true; return; } // 锁定中再按=解除
+    t=setTimeout(function(){ setLock(true); },400); // 长按=锁定按住
+  });
+  el.addEventListener('touchend',function(e){
+    clearTimeout(t);
+    if(!locked&&!justUnlocked){ click(); } // 短按=单击
+    justUnlocked=false;
+  });
+  el.addEventListener('touchcancel',function(e){
+    clearTimeout(t);
+    if(locked) setLock(false);
+    justUnlocked=false;
+  });
+}
+bindKey(mleft,'左键',
+  function(){ doSend({type:'mdn'}); doSend({type:'mup'}); },  // 单击
+  function(){ doSend({type:'mdn'}); },                         // 锁定=按住
+  function(){ doSend({type:'mup'}); });                        // 解除=抬起
+bindKey(mright,'右键',
+  function(){ doSend({type:'rdn'}); doSend({type:'rup'}); },
+  function(){ doSend({type:'rdn'}); },
+  function(){ doSend({type:'rup'}); });
+// 滚轮键：开关滚轮模式（不做中键单击；滚轮模式滑动=滚轮）
+mwheel.addEventListener('click',function(){
+  padWheelMode=!padWheelMode;
+  mwheel.classList.toggle('on',padWheelMode);
+  mwheel.textContent=padWheelMode?'滚轮·模式中':'滚轮';
+  if(padWheelMode && padZoomMode){ padZoomMode=false; mzoom.classList.remove('on'); mzoom.textContent='缩放'; }
+});
+// 缩放键：开关缩放模式（上滑=放大/下滑=缩小；与滚轮模式互斥）
+mzoom.addEventListener('click',function(){
+  padZoomMode=!padZoomMode;
+  mzoom.classList.toggle('on',padZoomMode);
+  mzoom.textContent=padZoomMode?'缩放·模式中':'缩放';
+  if(padZoomMode && padWheelMode){ padWheelMode=false; mwheel.classList.remove('on'); mwheel.textContent='滚轮'; }
+});
+
+function sendText(){
+  var t=box.value;
+  if(!t){return;}
+  if(doSend({type:'text',text:t})){
+    lastLen=t.replace(/\r?\n/g,'\n').length;
+    box.value='';
+    if(mode==='live'){ lastSent=''; }
+    send.classList.add('sent');
+    setTimeout(function(){send.classList.remove('sent');},300);
+  }
+}
+
+function toArr(s){ return typeof Array.from==='function'?Array.from(s):s.split(''); }
+
+function calcDiff(prev,cur){
+  var a=toArr(prev),b=toArr(cur),L=0,max=Math.min(a.length,b.length);
+  while(L<max&&a[L]===b[L]){L++;}
+  return {back:a.length-L,suffix:b.slice(L).join('')};
+}
+
+function flushSync(){
+  if(mode!=='live'){return;}
+  var cur=box.value;
+  if(cur===lastSent){return;}
+  var d=calcDiff(lastSent,cur);
+  lastSent=cur;
+  if(d.back===0&&!d.suffix){return;}
+  doSend({type:'sync',back:d.back,text:d.suffix});
+  armAutoClear();
+}
+
+// 实时同步的自动清空：停顿 1.5 秒没再输入，就把手机输入框清空复位，
+// 方便接着说下一句。只清手机端，电脑上已经出现的字不动。
+var autoClearOn=true;
+var autoClearTimer=null;
+var AUTO_CLEAR_MS=1500;
+function armAutoClear(){
+  if(mode!=='live'||!autoClearOn){return;}
+  clearTimeout(autoClearTimer);
+  autoClearTimer=setTimeout(function(){
+    if(mode!=='live'||!autoClearOn){return;}
+    box.value='';
+    lastSent='';
+    clearTimeout(syncTimer);
+  },AUTO_CLEAR_MS);
+}
+
+function scheduleSync(){
+  if(mode!=='live'){return;}
+  clearTimeout(syncTimer);
+  syncTimer=setTimeout(flushSync,450);
+  armAutoClear();
+}
+
+function setMode(v){
+  mode=v;
+  if(mode==='live'){
+    lastSent=box.value;
+    send.textContent='清空';
+    send.classList.add('live');
+    hint.textContent='实时同步已开，边说边到电脑。停顿 1.5 秒自动清空输入框，方便说下一句（可点「自动清空」关闭）';
+    armAutoClear();
+  }else{
+    lastSent='';
+    clearTimeout(syncTimer);
+    clearTimeout(autoClearTimer);
+    send.textContent='发 送';
+    send.classList.remove('live');
+    hint.textContent='发送后文字出现在电脑光标处 · 撤回=删掉上一次发送的内容';
+  }
+}
+
+modeSel.onchange=function(){ setMode(modeSel.value); };
+
+autoclearBtn.onclick=function(){
+  autoClearOn=!autoClearOn;
+  autoclearBtn.classList.toggle('on',autoClearOn);
+  clearTimeout(autoClearTimer);
+  if(autoClearOn){ armAutoClear(); }
+};
+
+send.onclick=function(){
+  if(mode==='live'){
+    box.value='';lastSent='';clearTimeout(syncTimer);clearTimeout(autoClearTimer);
+    send.classList.add('sent');
+    setTimeout(function(){send.classList.remove('sent');},300);
+    return;
+  }
+  sendText();
+};
+
+box.addEventListener('compositionstart',function(){composing=true;});
+box.addEventListener('compositionend',function(){composing=false;scheduleSync();});
+box.addEventListener('input',function(e){
+  if(mode!=='live'){return;}
+  if(e&&e.isComposing){return;}
+  if(composing){return;}
+  scheduleSync();
+});
+box.addEventListener('keydown',function(e){
+  if(e.key==='Enter'&&!e.shiftKey&&mode!=='live'){e.preventDefault();sendText();}
+});
+
+document.getElementById('enter').onclick=function(){
+  if(mode==='live'){
+    box.value+='\n';lastSent=box.value;clearTimeout(syncTimer);
+    doSend({type:'enter'});
+    armAutoClear();
+    return;
+  }
+  doSend({type:'enter'});
+};
+document.getElementById('bs').onclick=function(){
+  if(mode==='live'){
+    var a=toArr(box.value);
+    if(a.length>0){a.pop();box.value=a.join('');lastSent=box.value;}
+    clearTimeout(syncTimer);
+    doSend({type:'backspace',count:1});
+    armAutoClear();
+    return;
+  }
+  doSend({type:'backspace',count:1});
+};
+document.getElementById('undo').onclick=function(){
+  if(mode==='live'){
+    var n=toArr(lastSent).length;
+    if(n>0){doSend({type:'backspace',count:n});}
+    lastSent='';box.value='';clearTimeout(syncTimer);clearTimeout(autoClearTimer);
+    return;
+  }
+  if(lastLen>0){doSend({type:'backspace',count:lastLen});lastLen=0;}
+};
+document.addEventListener('visibilitychange',function(){
+  if(!document.hidden&&(!ws||ws.readyState>1)){clearTimeout(timer);connect();}
+});
+
+// 保活：每 15 秒 ping 一次，避免 NAT/运营商空闲断连（远程组网时尤其重要）
+setInterval(function(){
+  if(ws&&ws.readyState===1){ ws.send(JSON.stringify({type:'ping'})); }
+},15000);
+
+setMode('manual');
+if(!code){
+  // 没有连接码：显示输入框，手动输码连接（二维码之外的第二通道）
+  coderow.style.display='flex';
+  setSt(false,'请输入电脑上的连接码');
+  codego.onclick=function(){
+    var c=(codeinput.value||'').trim();
+    if(!c){return;}
+    code=c;
+    coderow.style.display='none';
+    setSt(false,'连接中…');
+    connect();
+  };
+}else{
+  connect();
+}
+})();
+</script>
+</body>
+</html>

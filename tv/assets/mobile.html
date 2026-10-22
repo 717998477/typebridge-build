@@ -1,0 +1,682 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>TypeBridge</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{font-family:system-ui,-apple-system,sans-serif;display:flex;flex-direction:column;height:100dvh;background:#f5f6f8;color:#1a1a1a}
+#top{display:flex;align-items:center;gap:8px;padding:12px 16px;background:#fff;border-bottom:1px solid #e5e5e5}
+#dot{width:10px;height:10px;border-radius:50%;background:#ccc;flex-shrink:0}
+#dot.on{background:#22ab5f}
+#dot.off{background:#d9483b}
+#status{font-size:14px;color:#555}
+#fg{font-size:12px;color:#888;padding:6px 16px;background:#fafafa;border-bottom:1px solid #eee;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#tabs{display:flex;background:#fff;border-bottom:1px solid #e5e5e5}
+#tabs button{flex:1;padding:12px 0;font-size:15px;color:#666;background:transparent;border:none;border-bottom:2px solid transparent;cursor:pointer}
+#tabs button.on{color:#185fa5;font-weight:600;border-bottom-color:#185fa5}
+/* ---- 鼠标模式 ---- */
+#mouse{display:none;flex:1;flex-direction:column;padding:12px 16px 8px}
+body.mouse #mouse{display:flex}
+body.mouse #kbd{display:none}
+#pad{flex:1;min-height:200px;border:2px dashed #b8c6d4;border-radius:12px;background:#eef3f8;position:relative;touch-action:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;-webkit-tap-highlight-color:transparent}
+#pad.longing{box-shadow:inset 0 0 0 2px #ff9800;background:rgba(255,152,0,.14)}
+#pad.zoommode{box-shadow:inset 0 0 0 2px #22ab5f;background:rgba(34,171,95,.10)}
+#zoombtn.on{background:#22ab5f;color:#fff;border-color:#22ab5f}
+#scrollbtn.on{background:#22ab5f;color:#fff;border-color:#22ab5f}
+#pad.scrollmode{box-shadow:inset 0 0 0 2px #ff9800;background:rgba(255,152,0,.10)}
+#pad .t{position:absolute;left:0;right:0;top:45%;text-align:center;color:#7d93ab;font-size:13px;line-height:1.7;pointer-events:none;padding:0 16px}
+#keyrow{display:flex;gap:8px;margin-top:10px}
+#keyrow button{flex:1;padding:12px 0;font-size:14px;color:#333;background:#fff;border:1px solid #d0d0d0;border-radius:10px;cursor:pointer}
+#keyrow button:active{background:#e3ecf5}
+#scrow{display:flex;gap:8px;margin-top:8px}
+#scrow button{flex:1;padding:12px 0;font-size:14px;color:#333;background:#fff;border:1px solid #d0d0d0;border-radius:10px;cursor:pointer}
+#scrow button:active{background:#e3ecf5}
+#volpanel{position:fixed;left:50%;bottom:88px;transform:translateX(-50%);width:min(320px,86vw);background:#fff;border-radius:14px;box-shadow:0 8px 30px rgba(0,0,0,.35);z-index:99;padding:14px 16px;text-align:center}
+#voltitle{font-size:13px;color:#888;margin-bottom:2px}
+#volval{font-size:26px;font-weight:600;color:#185fa5;margin:4px 0 10px}
+#volbtns{display:flex;gap:10px}
+#volbtns button{flex:1;padding:12px 0;font-size:18px;color:#333;background:#fff;border:1px solid #d0d0d0;border-radius:10px;cursor:pointer}
+#volbtns button:active{background:#e3ecf5}
+#hint{font-size:12px;color:#999;text-align:center;padding:8px 0 4px;line-height:1.5}
+/* ---- 键盘模式 ---- */
+#kbd{flex:1;display:flex;flex-direction:column}
+#box{flex:1;margin:12px 16px;padding:14px;font-size:17px;line-height:1.5;border:1px solid #d0d0d0;border-radius:10px;resize:none;background:#fff}
+#box:focus{outline:none;border-color:#378add}
+#sendrow{display:flex;gap:10px;margin:0 16px 10px}
+#mode{flex:0 0 42%;padding:16px 34px 16px 12px;font-size:15px;color:#333;background-color:#fff;border:1px solid #d0d0d0;border-radius:10px;cursor:pointer;
+  -webkit-appearance:none;appearance:none;
+  background-image:url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' fill='none' stroke='%23888' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:right 12px center}
+#send{flex:1;padding:16px;font-size:18px;font-weight:500;color:#fff;background:#185fa5;border:none;border-radius:10px;cursor:pointer}
+#send:active{background:#0c447c}
+#send.sent{background:#22ab5f}
+#send.live{background:#22ab5f}
+#autoclear{flex:0 0 auto;padding:16px 10px;font-size:13px;color:#333;background:#fff;border:1px solid #d0d0d0;border-radius:10px;cursor:pointer;white-space:nowrap}
+#autoclear:active{background:#eee}
+#autoclear.on{background:#22ab5f;color:#fff;border-color:#22ab5f}
+#row{display:flex;gap:10px;margin:0 16px calc(12px + env(safe-area-inset-bottom))}
+#row button{flex:1;padding:14px 0;font-size:15px;color:#333;background:#fff;border:1px solid #d0d0d0;border-radius:10px;cursor:pointer}
+#row button:active{background:#eee}
+#coderow{display:flex;gap:10px;margin:0 16px 10px}
+#codeinput{flex:1;min-width:0;padding:12px;font-size:15px;border:1px solid #d0d0d0;border-radius:10px;background:#fff;color:#1a1a1a}
+#codego{padding:12px 18px;font-size:15px;font-weight:500;color:#fff;background:#185fa5;border:none;border-radius:10px;cursor:pointer}
+#codego:active{background:#0c447c}
+@media (prefers-color-scheme:dark){
+body{background:#111;color:#eee}
+#top{background:#1c1c1e;border-color:#333}
+#tabs{background:#1c1c1e;border-color:#333}
+#fg{background:#161616;border-color:#2a2a2a;color:#aaa}
+#box{background:#1c1c1e;border-color:#444;color:#eee}
+#mode{background-color:#2c2c2e;border-color:#444;color:#ddd}
+#row button{background:#2c2c2e;border-color:#444;color:#ddd}
+#codeinput{background:#2c2c2e;border-color:#444;color:#eee}
+#autoclear{background:#2c2c2e;border-color:#444;color:#ddd}
+#autoclear.on{background:#22ab5f;color:#fff;border-color:#22ab5f}
+#pad{background:#1a2330;border-color:#3a4a5e}
+#pad .t{color:#7d93ab}
+#keyrow button,#scrow button{background:#2c2c2e;border-color:#444;color:#ddd}
+}
+</style>
+</head>
+<body>
+<div id="top"><span id="dot" class="off"></span><span id="status">连接中…</span></div>
+<div id="fg">目标：TypeBridge 遥控（电视端）</div>
+<div id="coderow" style="display:none">
+<input id="codeinput" placeholder="输入连接码（字母/数字，最多 30 位）" inputmode="text" autocomplete="off">
+<button id="codego">连 接</button>
+</div>
+<div id="tabs">
+<button id="tabMouse">鼠标遥控</button>
+<button id="tabKbd" class="on">键盘输入</button>
+</div>
+
+<div id="mouse">
+<div id="pad">
+  <div class="t">滑动 = 移动准星（相对位移）<br>单击 = 点击准星位置<br>长按 0.4 秒 = 长按<br>长按后滑动 = 触摸拖动<br><b>缩放模式开：双指捏合 = 缩放</b></div>
+</div>
+<div id="keyrow">
+<button data-key="back">返回</button>
+<button data-key="home">主页</button>
+<button data-key="menu">菜单</button>
+<button data-enter="1">回车</button>
+<button data-bs="1">退格</button>
+</div>
+<div id="scrow">
+<button data-scroll="up">上滚</button>
+<button data-scroll="down">下滚</button>
+<button id="zoombtn">缩放模式:关</button>
+<button id="scrollbtn">滑动:关</button>
+<button id="volbtn">音量</button>
+<button id="modebtn">…</button>
+<button id="logbtn">日志:…</button>
+<button id="viewlog">下载日志</button>
+</div>
+<div id="volpanel" style="display:none">
+  <div id="voltitle">媒体音量</div>
+  <div id="volval">--</div>
+  <div id="volbtns">
+    <button data-vol="down">－</button>
+    <button data-vol="mute">静音</button>
+    <button data-vol="up">＋</button>
+  </div>
+</div>
+<div id="logbox" style="display:none;margin-top:8px;max-height:220px;overflow:auto;background:#111;color:#7CFC98;font-size:11px;line-height:1.5;border-radius:8px;padding:10px;font-family:monospace;white-space:pre-wrap"></div>
+<div id="hint">v0.6.53 · 先开电视上的「TypeBridge 鼠标遥控」无障碍服务，才能显示光标 · 日志=电视服务运行记录</div>
+</div>
+
+<div id="kbd">
+<textarea id="box" placeholder="点这里打字/说话，发送到电视当前输入框" enterkeyhint="send" autocomplete="off"></textarea>
+<div id="sendrow">
+<select id="mode" title="同步方式">
+<option value="manual">手动发送</option>
+<option value="live">实时同步</option>
+</select>
+<button id="autoclear" class="on" title="实时同步时，停顿 1.5 秒自动清空输入框">自动清空</button>
+<button id="send">发 送</button>
+</div>
+<div id="row">
+<button id="enter">回车</button>
+<button id="undo">撤回</button>
+<button id="bs">退格</button>
+</div>
+</div>
+
+<script>
+(function(){
+var code = '';
+var m = location.search.match(/[?&]code=([^&]*)/);
+if (m) code = decodeURIComponent(m[1]);
+var dot=document.getElementById('dot'),status=document.getElementById('status'),
+    fg=document.getElementById('fg'),box=document.getElementById('box'),
+    send=document.getElementById('send'),modeSel=document.getElementById('mode'),
+    hint=document.getElementById('hint'),
+    autoclearBtn=document.getElementById('autoclear'),
+    coderow=document.getElementById('coderow'),codeinput=document.getElementById('codeinput'),
+    codego=document.getElementById('codego'),
+    tabMouse=document.getElementById('tabMouse'),tabKbd=document.getElementById('tabKbd'),
+    pad=document.getElementById('pad');
+var ws=null,authed=false,lastLen=0,timer=null;
+var mode='manual',lastSent='',syncTimer=null,composing=false;
+
+function setSt(on,txt){
+  dot.classList.toggle('on',on);dot.classList.toggle('off',!on);
+  status.textContent=txt;
+}
+
+function connect(){
+  authed=false;
+  setSt(false,'连接中…');
+  try{ ws=new WebSocket('ws://'+location.host+'/ws'); }
+  catch(e){ setSt(false,'连接失败'); return; }
+  ws.onopen=function(){
+    ws.send(JSON.stringify({type:'hello',code:code}));
+  };
+  ws.onmessage=function(e){
+    var m; try{m=JSON.parse(e.data);}catch(p){return;}
+    if(m.type==='ready'){
+      authed=true;setSt(true,'已连接');
+      if(mode==='live'){ lastSent=box.value; }
+    }
+    else if(m.type==='error'){setSt(false,m.msg||'错误');}
+  };
+  ws.onclose=function(){authed=false;setSt(false,'已断开，3秒后重连…');timer=setTimeout(connect,3000);};
+  ws.onerror=function(){try{ws.close();}catch(e){}};
+}
+
+function doSend(obj){ if(ws&&ws.readyState===1){ws.send(JSON.stringify(obj));return true;} return false; }
+
+/* ---------- 标签切换 ---------- */
+tabMouse.onclick=function(){ document.body.classList.add('mouse'); tabMouse.classList.add('on'); tabKbd.classList.remove('on'); };
+tabKbd.onclick=function(){ document.body.classList.remove('mouse'); tabKbd.classList.add('on'); tabMouse.classList.remove('on'); };
+
+/* ---------- 鼠标触摸板（微软远程桌面风格） ----------
+   单指滑动 = 相对移动准星（手指在哪滑都行，准星按位移移动，不跟手指位置）
+   单击 = 点击准星当前位置（手指位置无关）
+   长按（按住 0.4 秒）或 双指点击 = 长按准星处的图标（弹菜单）
+   长按后滑动 = 移动准星（可用来点菜单项）；滚动请用下方"上滚/下滚"按钮
+   （说明：小米桌面禁止无障碍注入"长按+拖动"手势，注入会导致桌面重启，
+    这是系统级限制；拖动图标请用真实手指或 USB 鼠标） */
+var pointers={},touchMode='none',moved=false,downAt=0,acc=0,lastFp=null,
+    longTimer=null,longFired=false,pinchP1=null,pinchP2=null,pinchMoved=false,pinchLast=0,
+    pinchD0=0,lastScale=1,zoomMode=false,lastDrag=0,pendingDragX=0,pendingDragY=0,
+    pinchJustEnded=false, // 双指刚结束：最后一指抬起不再触发点击
+    scrollMode=false,scrollAcc=0,scrollAccX=0,scrollLast=0, // 滑动开关：准星固定，单指滑动 1:1 滚动屏幕内容
+    scrollVel=0,scrollLastFp2=0; // 滑动速度（px/ms，平滑估计）：快速滑动时距离翻倍
+function padRect(){ return pad.getBoundingClientRect(); }
+function norm(x,y){ var r=padRect(); return {x:(x-r.left)/r.width*1000,y:(y-r.top)/r.height*1000}; }
+function clearLong(){ if(longTimer){ clearTimeout(longTimer); longTimer=null; } }
+function fireLong(){
+  clearLong(); longFired=true;
+  doSend({type:'longpress'}); // 长按立即触发（图标浮起/弹菜单）
+  pad.classList.add('longing');
+}
+function resetTouch(){
+  clearLong(); touchMode='none'; longFired=false; lastFp=null; acc=0;
+}
+pad.addEventListener('touchstart',function(e){
+  e.preventDefault();
+  var t=e.changedTouches;
+  for(var i=0;i<t.length;i++){ pointers[t[i].identifier]={x:t[i].clientX,y:t[i].clientY}; }
+  var n=Object.keys(pointers).length;
+  if(n===1 && touchMode!=='two'){
+    touchMode='single'; moved=false; downAt=Date.now(); acc=0; pinchJustEnded=false;
+    scrollAcc=0; scrollAccX=0; scrollLast=0; scrollVel=0; scrollLastFp2=0;
+    lastFp={x:t[0].clientX,y:t[0].clientY};
+    clearLong();
+    // 滑动模式下不设长按（单指滑动 = 滚动，轻点 = 点击）
+    if(!scrollMode && !longFired){
+      longTimer=setTimeout(function(){ longTimer=null; fireLong(); },400);
+    }
+  } else if(n>=2){
+    // 双指：进入缩放模式（不再模拟长按）。双指点击已移除
+    clearLong();
+    touchMode='two';
+    pinchP1=null; pinchP2=null; pinchMoved=false; pinchLast=0; pinchD0=0; lastScale=1;
+  }
+},{passive:false});
+pad.addEventListener('touchmove',function(e){
+  e.preventDefault();
+  if(touchMode==='two'){
+    // 双指：更新指针位置，捏合/张开 = 缩放（只发间距比例，被控端对称注入，不旋转）
+    var ids=e.changedTouches;
+    for(var k=0;k<ids.length;k++){ var id2=ids[k].identifier; if(pointers[id2]){ pointers[id2]={x:ids[k].clientX,y:ids[k].clientY}; } }
+    var ks=Object.keys(pointers);
+    if(ks.length>=2){
+      var now=Date.now();
+      var a=pointers[ks[0]], b=pointers[ks[1]];
+      if(pinchD0<=0){ pinchD0=Math.max(1,Math.hypot(a.x-b.x,a.y-b.y)); pinchLast=now; }
+      else if(now-pinchLast>80){   // 节流 80ms：ADB 靠被控端补帧平滑；无障碍避免手势互相覆盖
+        var d=Math.hypot(a.x-b.x,a.y-b.y);
+        var scale=Math.max(0.1,Math.min(5,d/pinchD0));
+        if(Math.abs(scale-lastScale)>0.01){
+          doSend({type:'pinch',scale:scale});
+          pinchMoved=true; pinchLast=now; lastScale=scale;
+        }
+      }
+    }
+    return;
+  }
+  if(touchMode==='single'){
+    if(zoomMode){ return; } // 缩放模式：准星锁定，滑动不移动准星
+    var t1=e.changedTouches[0];
+    var dx=t1.clientX-lastFp.x, dy=t1.clientY-lastFp.y;
+    lastFp={x:t1.clientX,y:t1.clientY};
+    if(scrollMode){
+      // 滑动开关模式：准星固定，单指滑动 1:1 滚动屏幕内容（会话式：DOWN 一次→连续 MOVE→松手 UP）
+      acc+=Math.abs(dx)+Math.abs(dy);
+      if(!moved && acc<=16) return; // 微动死区：轻点仍算点击
+      if(!moved){ doSend({type:'scrollstart'}); } // 首次滑动开启触摸会话
+      moved=true; clearLong();
+      var scNow=Date.now();
+      // 速度估计：单帧滑动距离（横+纵）/帧间隔（px/ms），平滑滤波抗抖
+      if(scrollLastFp2>0){
+        var dt2=scNow-scrollLastFp2;
+        if(dt2>0){ scrollVel=0.7*scrollVel+0.3*((Math.abs(dx)+Math.abs(dy))/dt2); }
+      }
+      scrollLastFp2=scNow;
+      // 快速滑动（>1.2px/ms≈快速甩动）：滑动距离翻倍，一次滑得更远
+      var k=(scrollVel>1.2)?2:1;
+      scrollAcc+=dy*k; scrollAccX+=dx*k; // 倍率作用在增量上，切换倍率不会导致发送值跳变
+      // 累积 15px（横/纵任一）+ 20ms 节流发 MOVE（dy/dx 是从 touchstart 起的累计偏移，被控端直接 MOVE 到位）
+      if((Math.abs(scrollAcc)>=15 || Math.abs(scrollAccX)>=15) && scNow-scrollLast>=20){
+        doSend({type:'scrollmove',dx:Math.round(scrollAccX),dy:Math.round(scrollAcc)});
+        scrollLast=scNow;
+      }
+      return;
+    }
+    acc+=Math.abs(dx)+Math.abs(dy);
+    if(!moved && acc<=16) return; // 点击微动死区
+    moved=true; clearLong();
+    var r=padRect();
+    if(longFired){
+      // 长按后滑动：注入真实触摸移动（被控端连续手势）→ 开发者选项"指针位置"显示触摸轨迹 = 真正拖动
+      // 时间节流 100ms（与被控端 100ms 手势等长）：发送频率=手势执行频率 → 不堆积不被取消
+      pendingDragX+=dx; pendingDragY+=dy;
+      var now=Date.now();
+      if(now-lastDrag>=100){
+        doSend({type:'dragmove',dx:pendingDragX/r.width*1000,dy:pendingDragY/r.height*1000});
+        pendingDragX=0; pendingDragY=0; lastDrag=now;
+      }
+    } else {
+      doSend({type:'mouserel',dx:dx/r.width*1000,dy:dy/r.height*1000});
+    }
+  }
+},{passive:false});
+pad.addEventListener('touchend',function(e){
+  e.preventDefault();
+  var t=e.changedTouches;
+  for(var i=0;i<t.length;i++){ delete pointers[t[i].identifier]; }
+  var n=Object.keys(pointers).length;
+  if(touchMode==='two'){
+    if(n===1){
+      // 双指抬起一指：结束缩放（若有）；剩余手指继续滑动 = 移动准星（非缩放模式）
+      if(pinchMoved){ doSend({type:'pinchend'}); }
+      pinchP1=null; pinchP2=null; pinchMoved=false; pinchD0=0; lastScale=1;
+      touchMode='single'; moved=false; acc=0; pinchJustEnded=true;
+      var k=Object.keys(pointers);
+      lastFp={x:pointers[k[0]].x,y:pointers[k[0]].y};
+    } else if(n===0){
+      // 双指都抬起：只结束缩放（若做过捏合）；双指点击不再触发长按
+      if(pinchMoved){ doSend({type:'pinchend'}); }
+      pinchP1=null; pinchP2=null; pinchMoved=false; pinchD0=0; lastScale=1;
+      pinchJustEnded=true;
+      resetTouch(); pad.classList.remove('longing');
+    }
+    return;
+  }
+  if(touchMode==='single'){
+    if(n===0){
+      clearLong();
+      if(scrollMode && moved){
+        // 滑动会话结束：松手 UP（DOWN 由 scrollstart 注入），内容停止跟随
+        doSend({type:'scrollend'});
+        scrollAcc=0; scrollAccX=0; scrollLast=0;
+        resetTouch(); pad.classList.remove('longing');
+        return;
+      }
+      if(longFired){
+        // 长按后松手必须结束触摸会话（dragend=UP）：即使没滑动也要发，
+        // 否则被控端 DOWN 悬挂，之后点击菜单项会与悬挂触摸冲突（菜单自动消失）
+        doSend({type:'dragend'});
+        scrollAcc=0; scrollAccX=0;
+        resetTouch(); pad.classList.remove('longing');
+        return;
+      }
+      if(pinchJustEnded){ pinchJustEnded=false; resetTouch(); return; } // 双指刚结束：不触发点击
+      if(!moved){ doSend({type:'tap'}); }
+      scrollAcc=0; scrollAccX=0;
+      resetTouch();
+    }
+    return;
+  }
+},{passive:false});
+pad.addEventListener('touchcancel',function(e){
+  var t=e.changedTouches;
+  for(var i=0;i<t.length;i++){ delete pointers[t[i].identifier]; }
+  if(pinchMoved){ doSend({type:'pinchend'}); }
+  if(longFired){ doSend({type:'dragend'}); }
+  if(scrollMode && moved){ doSend({type:'scrollend'}); scrollAcc=0; scrollAccX=0; scrollLast=0; }
+  pinchP1=null; pinchP2=null; pinchMoved=false; pinchD0=0; lastScale=1;
+  resetTouch(); pad.classList.remove('longing');
+});
+
+// 电脑浏览器调试：鼠标拖动=相对移准星，点按=点击准星处
+var mMoved=false,mLast=null;
+pad.addEventListener('mousedown',function(e){ mMoved=false; mLast={x:e.clientX,y:e.clientY}; });
+pad.addEventListener('mousemove',function(e){
+  if(e.buttons&1 && mLast){
+    var r=padRect();
+    doSend({type:'mouserel',dx:(e.clientX-mLast.x)/r.width*1000,dy:(e.clientY-mLast.y)/r.height*1000});
+    mLast={x:e.clientX,y:e.clientY}; mMoved=true;
+  }
+});
+pad.addEventListener('mouseup',function(e){ if(!mMoved){ doSend({type:'tap'}); } });
+
+/* 按键行 */
+document.getElementById('keyrow').addEventListener('click',function(e){
+  var b=e.target;
+  if(b.dataset.enter){ doSend({type:'enter'}); }
+  else if(b.dataset.bs){ doSend({type:'backspace',count:1}); }
+  else if(b.dataset.key){ doSend({type:'key',key:b.dataset.key}); }
+});
+document.getElementById('zoombtn').addEventListener('click',function(e){
+  e.stopPropagation();
+  zoomMode=!zoomMode;
+  this.textContent=zoomMode?'缩放模式:开':'缩放模式:关';
+  this.classList.toggle('on',zoomMode);
+  pad.classList.toggle('zoommode',zoomMode);
+  if(!zoomMode){ pinchP1=null; pinchP2=null; pinchMoved=false; }
+});
+document.getElementById('scrow').addEventListener('click',function(e){
+  var b=e.target;
+  if(b.id==='viewlog'){
+    var lb=document.getElementById('logbox');
+    if(lb.style.display==='block'){ lb.style.display='none'; return; }
+    lb.style.display='block'; lb.textContent='加载中…';
+    var x=new XMLHttpRequest();
+    x.open('GET','/log',true);
+    x.timeout=5000;
+    x.ontimeout=function(){ lb.textContent='获取超时（电视服务繁忙？稍后重试）'; };
+    x.onerror=function(){ lb.textContent='获取失败（电视服务未启动？）'; };
+    x.onload=function(){
+      var t=x.responseText||'(空)';
+      var blob=new Blob([t],{type:'text/plain;charset=utf-8'});
+      var a=document.createElement('a');
+      a.href=URL.createObjectURL(blob);
+      a.download='tb_log_'+Date.now()+'.txt';
+      document.body.appendChild(a);
+      a.click();
+      setTimeout(function(){ URL.revokeObjectURL(a.href); },1000);
+      lb.textContent='日志已生成：tb_log_'+Date.now()+'.txt（'+t.length+' 字符）';
+    };
+    x.send();
+    return;
+  }
+  if(b.dataset.scroll){ doSend({type:'scroll',dir:b.dataset.scroll}); }
+});
+/* ---------- 音量面板 ---------- */
+function refreshVol(){
+  var x=new XMLHttpRequest();
+  x.open('GET','/api/volume',true);
+  x.timeout=3000;
+  x.onload=function(){
+    try{
+      var j=JSON.parse(x.responseText);
+      var v=document.getElementById('volval');
+      if(j.v<0){ v.textContent='--'; }
+      else{ v.textContent=j.v+' / '+j.max; }
+    }catch(err){ document.getElementById('volval').textContent='--'; }
+  };
+  x.onerror=function(){ document.getElementById('volval').textContent='--'; };
+  x.send();
+}
+document.getElementById('volbtn').addEventListener('click',function(e){
+  e.stopPropagation();
+  var p=document.getElementById('volpanel');
+  if(p.style.display==='block'){ p.style.display='none'; return; }
+  p.style.display='block';
+  refreshVol();
+});
+document.getElementById('volbtns').addEventListener('click',function(e){
+  var b=e.target;
+  if(b.dataset.vol){
+    doSend({type:'volume',op:b.dataset.vol});
+    setTimeout(refreshVol,350);
+  }
+});
+document.addEventListener('click',function(e){
+  var p=document.getElementById('volpanel');
+  if(p.style.display==='block' && !p.contains(e.target) && e.target.id!=='volbtn'){
+    p.style.display='none';
+  }
+});
+
+/* ---------- 输入模式 / 日志开关（与 app 主界面同步） ---------- */
+var modeBtn=document.getElementById('modebtn'), logBtn=document.getElementById('logbtn'),
+    scrollBtn=document.getElementById('scrollbtn');
+function updScrollBtn(){
+  if(scrollMode){ scrollBtn.classList.add('on'); scrollBtn.textContent='滑动:开'; pad.classList.add('scrollmode'); }
+  else{ scrollBtn.classList.remove('on'); scrollBtn.textContent='滑动:关'; pad.classList.remove('scrollmode'); }
+}
+function syncSwitches(){
+  var x=new XMLHttpRequest();
+  x.open('GET','/api/mode',true); x.timeout=3000;
+  x.onload=function(){ try{ var j=JSON.parse(x.responseText);
+    modeBtn.dataset.mode=j.mode;
+    modeBtn.textContent=(j.mode==='adb'?'ADB模式':'无障碍');
+  }catch(err){} };
+  x.onerror=function(){ modeBtn.textContent='模式:?'; };
+  x.send();
+  var y=new XMLHttpRequest();
+  y.open('GET','/api/log',true); y.timeout=3000;
+  y.onload=function(){ try{ var j=JSON.parse(y.responseText);
+    logBtn.dataset.on=j.on;
+    logBtn.textContent=(j.on?'日志:记录中':'日志:已关闭');
+  }catch(err){} };
+  y.onerror=function(){ logBtn.textContent='日志:?'; };
+  y.send();
+  var z=new XMLHttpRequest();
+  z.open('GET','/api/scroll',true); z.timeout=3000;
+  z.onload=function(){ try{ var j=JSON.parse(z.responseText);
+    scrollMode=!!j.on; updScrollBtn();
+  }catch(err){} };
+  z.send();
+}
+modeBtn.addEventListener('click',function(e){
+  e.stopPropagation();
+  var next=(modeBtn.dataset.mode==='adb')?'accessibility':'adb';
+  var x=new XMLHttpRequest();
+  x.open('POST','/api/mode',true);
+  x.setRequestHeader('Content-Type','application/json');
+  x.timeout=3000;
+  x.onload=function(){ syncSwitches(); };
+  x.onerror=function(){ syncSwitches(); };
+  x.send(JSON.stringify({mode:next}));
+});
+logBtn.addEventListener('click',function(e){
+  e.stopPropagation();
+  var cur=(logBtn.dataset.on==='true');
+  var x=new XMLHttpRequest();
+  x.open('POST','/api/log',true);
+  x.setRequestHeader('Content-Type','application/json');
+  x.timeout=3000;
+  x.onload=function(){ syncSwitches(); };
+  x.onerror=function(){ syncSwitches(); };
+  x.send(JSON.stringify({on:!cur}));
+});
+scrollBtn.addEventListener('click',function(e){
+  e.stopPropagation();
+  scrollMode=!scrollMode;
+  var x=new XMLHttpRequest();
+  x.open('POST','/api/scroll',true);
+  x.setRequestHeader('Content-Type','application/json');
+  x.timeout=3000;
+  x.onload=function(){ syncSwitches(); };
+  x.onerror=function(){ updScrollBtn(); };
+  x.send(JSON.stringify({on:scrollMode}));
+});
+syncSwitches();
+
+/* ---------- 键盘 ---------- */
+function sendText(){
+  var t=box.value;
+  if(!t){return;}
+  if(doSend({type:'text',text:t})){
+    lastLen=t.replace(/\r?\n/g,'\n').length;
+    box.value='';
+    if(mode==='live'){ lastSent=''; }
+    send.classList.add('sent');
+    setTimeout(function(){send.classList.remove('sent');},300);
+  }
+}
+
+function toArr(s){ return typeof Array.from==='function'?Array.from(s):s.split(''); }
+
+function calcDiff(prev,cur){
+  var a=toArr(prev),b=toArr(cur),L=0,max=Math.min(a.length,b.length);
+  while(L<max&&a[L]===b[L]){L++;}
+  return {back:a.length-L,suffix:b.slice(L).join('')};
+}
+
+function flushSync(){
+  if(mode!=='live'){return;}
+  var cur=box.value;
+  if(cur===lastSent){return;}
+  var d=calcDiff(lastSent,cur);
+  lastSent=cur;
+  if(d.back===0&&!d.suffix){return;}
+  doSend({type:'sync',back:d.back,text:d.suffix});
+  armAutoClear();
+}
+
+var autoClearOn=true;
+var autoClearTimer=null;
+var AUTO_CLEAR_MS=1500;
+function armAutoClear(){
+  if(mode!=='live'||!autoClearOn){return;}
+  clearTimeout(autoClearTimer);
+  autoClearTimer=setTimeout(function(){
+    if(mode!=='live'||!autoClearOn){return;}
+    box.value='';
+    lastSent='';
+    clearTimeout(syncTimer);
+  },AUTO_CLEAR_MS);
+}
+
+function scheduleSync(){
+  if(mode!=='live'){return;}
+  clearTimeout(syncTimer);
+  syncTimer=setTimeout(flushSync,450);
+  armAutoClear();
+}
+
+function setMode(v){
+  mode=v;
+  if(mode==='live'){
+    lastSent=box.value;
+    send.textContent='清空';
+    send.classList.add('live');
+    hint.textContent='实时同步已开，边说边到电视。停顿 1.5 秒自动清空输入框，方便说下一句（可点「自动清空」关闭）';
+    armAutoClear();
+  }else{
+    lastSent='';
+    clearTimeout(syncTimer);
+    clearTimeout(autoClearTimer);
+    send.textContent='发 送';
+    send.classList.remove('live');
+    hint.textContent='发送后文字进入电视当前输入框 · 撤回=删掉上一次发送的内容';
+  }
+}
+
+modeSel.onchange=function(){ setMode(modeSel.value); };
+
+autoclearBtn.onclick=function(){
+  autoClearOn=!autoClearOn;
+  autoclearBtn.classList.toggle('on',autoClearOn);
+  clearTimeout(autoClearTimer);
+  if(autoClearOn){ armAutoClear(); }
+};
+
+send.onclick=function(){
+  if(mode==='live'){
+    box.value='';lastSent='';clearTimeout(syncTimer);clearTimeout(autoClearTimer);
+    send.classList.add('sent');
+    setTimeout(function(){send.classList.remove('sent');},300);
+    return;
+  }
+  sendText();
+};
+
+box.addEventListener('compositionstart',function(){composing=true;});
+box.addEventListener('compositionend',function(){composing=false;scheduleSync();});
+box.addEventListener('input',function(e){
+  if(mode!=='live'){return;}
+  if(e&&e.isComposing){return;}
+  if(composing){return;}
+  scheduleSync();
+});
+box.addEventListener('keydown',function(e){
+  if(e.key==='Enter'&&!e.shiftKey&&mode!=='live'){e.preventDefault();sendText();}
+});
+
+document.getElementById('enter').onclick=function(){
+  if(mode==='live'){
+    box.value+='\n';lastSent=box.value;clearTimeout(syncTimer);
+    doSend({type:'enter'});
+    armAutoClear();
+    return;
+  }
+  doSend({type:'enter'});
+};
+document.getElementById('bs').onclick=function(){
+  if(mode==='live'){
+    var a=toArr(box.value);
+    if(a.length>0){a.pop();box.value=a.join('');lastSent=box.value;}
+    clearTimeout(syncTimer);
+    doSend({type:'backspace',count:1});
+    armAutoClear();
+    return;
+  }
+  doSend({type:'backspace',count:1});
+};
+document.getElementById('undo').onclick=function(){
+  if(mode==='live'){
+    var n=toArr(lastSent).length;
+    if(n>0){doSend({type:'backspace',count:n});}
+    lastSent='';box.value='';clearTimeout(syncTimer);clearTimeout(autoClearTimer);
+    return;
+  }
+  if(lastLen>0){doSend({type:'backspace',count:lastLen});lastLen=0;}
+};
+document.addEventListener('visibilitychange',function(){
+  if(!document.hidden&&(!ws||ws.readyState>1)){clearTimeout(timer);connect();}
+});
+
+// 保活：每 15 秒 ping 一次，避免 NAT/运营商空闲断连
+setInterval(function(){
+  if(ws&&ws.readyState===1){ ws.send(JSON.stringify({type:'ping'})); }
+},15000);
+
+setMode('manual');
+if(!code){
+  coderow.style.display='flex';
+  setSt(false,'请输入连接码');
+  codego.onclick=function(){
+    var c=(codeinput.value||'').trim();
+    if(!c){return;}
+    code=c;
+    coderow.style.display='none';
+    setSt(false,'连接中…');
+    connect();
+  };
+}else{
+  connect();
+}
+})();
+</script>
+</body>
+</html>

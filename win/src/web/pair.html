@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TypeBridge 配对</title>
+<style>
+body{font-family:system-ui,sans-serif;max-width:640px;margin:24px auto;padding:0 20px;color:#222;line-height:1.7;text-align:center}
+h1{font-size:22px;margin-bottom:6px}
+.sub{color:#666;font-size:14px;margin-bottom:16px}
+.card{display:inline-block;background:#fff;border:1px solid #d8d8d8;border-radius:12px;padding:16px 18px;box-shadow:0 2px 8px rgba(0,0,0,.06);margin:8px 0}
+.card .lbl{font-size:14px;font-weight:600;color:#333;margin-bottom:4px}
+.card .tag{display:inline-block;font-size:11px;color:#fff;background:#185fa5;border-radius:3px;padding:1px 7px;margin-left:6px;vertical-align:2px}
+.card .tag.easy{background:#0d8a5f}
+.card .url{font-size:12px;color:#777;word-break:break-all;margin-top:8px}
+canvas{display:block;margin:8px auto 0}
+.group{font-size:13px;color:#555;margin:18px 0 6px;font-weight:600}
+.warn{background:#fff3f0;border:1px solid #f0b8ad;color:#a3341f;border-radius:8px;padding:12px 14px;font-size:13.5px;text-align:left;margin:0 0 16px;line-height:1.6}
+.warn code{background:#fff;padding:2px 6px;border-radius:4px;font-family:Consolas,monospace;font-size:12px}
+.tip{color:#888;font-size:13px;margin-top:16px;line-height:1.8}
+.tip b{color:#185fa5}
+</style>
+</head>
+<body>
+<h1>手机扫码连接</h1>
+<div class="sub">同一 WiFi：扫「无线/有线网卡」的码 · 不在同一网络：先组网 EasyTier，再扫「EasyTier 虚拟网卡」的码</div>
+<div id="warnbox"></div>
+<div id="list"></div>
+<div class="tip">连接码：<b id="code"></b> · 当前端口：<b id="port"></b><br>手机也可以直接输入上面任意地址，打开后手动输入连接码连接</div>
+<div class="tip">打开后页面出现绿点「已连接」，即可在手机上打字或说话，文字直达电脑光标处。</div>
+<script src="/qrcode.js"></script>
+<script>
+var ADDRS = __ADDRS__;
+var CODE = "__CODE__";
+var PORT = "__PORT__";
+(function () {
+  var groups = [
+    { key: 'easytier', title: '远程组网（EasyTier）', tag: '远程', tagClass: 'easy' },
+    { key: 'lan', title: '局域网（同一 WiFi）', tag: '局域网', tagClass: '' },
+    { key: 'other', title: '其他网卡', tag: '其他', tagClass: '' }
+  ];
+  document.getElementById('code').textContent = CODE;
+  document.getElementById('port').textContent = PORT;
+
+  var hasEasy = false;
+  for (var i = 0; i < ADDRS.length; i++) { if (ADDRS[i].group === 'easytier') hasEasy = true; }
+
+  if (!hasEasy) {
+    document.getElementById('warnbox').innerHTML =
+      '<div class="warn"><b>未检测到 EasyTier 虚拟网卡。</b><br>' +
+      '电脑和手机不在同一网络（不在同一路由器）时，请先在两端安装 EasyTier 并加入<b>同一个虚拟网络</b>，' +
+      '组网成功后再刷新本页，就会出现「EasyTier 虚拟网卡」的二维码。<br>' +
+      '步骤：① 电脑装 EasyTier 客户端，手机装 EasyTier App（iPhone 用 WireGuard 接入）；' +
+      '② 两端加入同一个网络名/密码相同的虚拟网络；③ 本页刷新即可扫码。<br>' +
+      '参考：<code>easytier.cn</code> 快速组网</div>';
+  }
+
+  var list = document.getElementById('list');
+  var html = '';
+  for (var g = 0; g < groups.length; g++) {
+    var grp = groups[g];
+    var items = [];
+    for (var i = 0; i < ADDRS.length; i++) {
+      if (ADDRS[i].group === grp.key) items.push(ADDRS[i]);
+    }
+    if (items.length === 0) continue;
+    html += '<div class="group">' + grp.title + '</div>';
+    for (var j = 0; j < items.length; j++) {
+      html += '<div class="card"><div class="lbl">' + items[j].label +
+        '<span class="tag ' + grp.tagClass + '">' + grp.tag + '</span></div>' +
+        '<canvas id="qr' + g + '_' + j + '"></canvas>' +
+        '<div class="url">' + items[j].url + '</div></div>';
+    }
+  }
+  if (ADDRS.length === 0) {
+    html = '<div class="warn">未找到可用网络 IP，请检查电脑是否连上网络。</div>';
+  }
+  list.innerHTML = html;
+
+  // 逐地址画二维码（组内序号与 HTML 里的 canvas id 保持一致）
+  for (var g = 0; g < groups.length; g++) {
+    var j = 0;
+    for (var i = 0; i < ADDRS.length; i++) {
+      if (ADDRS[i].group !== groups[g].key) continue;
+      try {
+        var qr = qrcode(0, 'M');
+        qr.addData(ADDRS[i].url);
+        qr.make();
+        var count = qr.getModuleCount();
+        var scale = Math.max(4, Math.floor(240 / count));
+        var border = 4;
+        var size = (count + border * 2) * scale;
+        var canvas = document.getElementById('qr' + g + '_' + j);
+        canvas.width = size;
+        canvas.height = size;
+        var ctx = canvas.getContext('2d');
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, size, size);
+        ctx.fillStyle = '#000000';
+        for (var row = 0; row < count; row++) {
+          for (var col = 0; col < count; col++) {
+            if (qr.isDark(row, col)) {
+              ctx.fillRect((col + border) * scale, (row + border) * scale, scale, scale);
+            }
+          }
+        }
+      } catch (e) {
+        document.getElementById('qr' + g + '_' + j).outerHTML =
+          '<div style="color:#a3341f;font-size:12px">二维码生成失败，请用下方地址手动输入</div>';
+      }
+      j++;
+    }
+  }
+})();
+</script>
+</body>
+</html>

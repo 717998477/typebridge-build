@@ -1,0 +1,35 @@
+name: Build Win exe
+
+on:
+  workflow_dispatch:
+  push:
+    tags: ['v*']
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install mono
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y mono-mcs mono-runtime \
+            libmono-system-drawing4.0-cil \
+            libmono-system-web-extensions4.0-cil \
+            libmono-system-windows-forms4.0-cil
+
+      - name: Build exe
+        run: bash win/build.sh
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: TypeBridge.exe
+          path: win/build/TypeBridge.exe
+
+      - name: Publish to Releases
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: win/build/TypeBridge.exe

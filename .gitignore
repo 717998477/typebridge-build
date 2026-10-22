@@ -1,0 +1,11 @@
+# 构建产物/中间文件不入库
+*.apk
+*.idsig
+win/build/
+tv/base.apk
+tv/aligned.apk
+tv/classes/
+tv/classes.jar
+tv/dexout/
+tv/gen/
+tv/res.zip

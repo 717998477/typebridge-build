@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">远程输入法</string>
+    <string name="main_title">CDH远程输入法</string>
+    <string name="ime_label">CDH远程输入法</string>
+    <string name="cursor_label">CDH远程输入法</string>
+    <string name="cursor_desc">在电视上显示鼠标指针，跟随焦点移动，支持点击、滚动和向输入框注入文字（配合手机控制页使用）。</string>
+</resources>
